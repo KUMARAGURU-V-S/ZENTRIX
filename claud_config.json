@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "weather": {
+      "command": "D:\\node js\\node.exe",
+      "args": ["D:/GitHub/mcp-weather-server/build/index.js"]
+    }
+  }
+}
