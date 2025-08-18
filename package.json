@@ -19,6 +19,8 @@
   "description": "",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.9.0",
+    "dotenv": "^17.2.1",
+    "firebase": "^12.1.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
