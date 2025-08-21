@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zenntrix</title>
+    <!-- Use Tailwind CSS for clean, mobile-first styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .chat-bubble {
+            border-radius: 1.5rem; /* Large, rounded corners */
+            padding: 1rem;
+            max-width: 80%;
+            word-wrap: break-word;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .user-bubble {
+            background-color: #4f46e5;
+            color: white;
+            align-self: flex-end;
+        }
+        .ai-bubble {
+            background-color: #e5e7eb;
+            color: #1f2937;
+            align-self: flex-start;
+        }
+        .loading-dots span {
+            animation: blink 1.4s infinite;
+        }
+        .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 0.2; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <!-- Main Container -->
+    <div class="flex flex-col w-full max-w-2xl bg-white shadow-xl rounded-2xl overflow-hidden p-6 space-y-4">
+
+        <!-- Header -->
+        <header class="text-center">
+            <h1 class="text-3xl font-bold text-gray-800">Zenntrix</h1>
+            <p class="text-gray-500">Your AI coding companion</p>
+        </header>
+
+        <!-- Chat History -->
+        <div id="chat-history" class="flex-1 overflow-y-auto space-y-4 p-4 h-96 border border-gray-200 rounded-xl">
+            <!-- Chat messages will be dynamically added here -->
+        </div>
+
+        <!-- User Input Form -->
+        <form id="chat-form" class="flex gap-2">
+            <input
+                id="user-input"
+                type="text"
+                class="flex-1 p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200"
+                placeholder="Ask me anything..."
+                autocomplete="off"
+            />
+            <button
+                type="submit"
+                id="send-button"
+                class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
+                Send
+            </button>
+        </form>
+
+    </div>
+
+    <!-- Message Box for Alerts (instead of alert()) -->
+    <div id="message-box" class="fixed top-0 inset-x-0 p-4 hidden">
+        <div class="bg-red-500 text-white p-4 rounded-xl shadow-lg flex justify-between items-center">
+            <p id="message-text">This is an alert message.</p>
+            <button id="close-message" class="text-white hover:text-red-200 focus:outline-none">&times;</button>
+        </div>
+    </div>
+    
+    <script>
+        // The API key is now handled by your backend, so we don't need it here.
+        // We will now send the user message to our own server.
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const chatHistory = document.getElementById('chat-history');
+        const sendButton = document.getElementById('send-button');
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+        const closeMessageButton = document.getElementById('close-message');
+
+        function displayMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('chat-bubble', 'p-3', 'rounded-lg', 'shadow-md');
+            messageDiv.classList.add(sender === 'user' ? 'user-bubble' : 'ai-bubble');
+            messageDiv.textContent = text;
+            chatHistory.appendChild(messageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        function showMessageBox(message) {
+            messageText.textContent = message;
+            messageBox.classList.remove('hidden');
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userMessage = userInput.value.trim();
+            if (userMessage === '') {
+                return;
+            }
+
+            displayMessage(userMessage, 'user');
+            userInput.value = '';
+            userInput.disabled = true;
+            sendButton.disabled = true;
+
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.classList.add('ai-bubble', 'chat-bubble', 'p-3', 'text-center');
+            loadingIndicator.innerHTML = '<span class="loading-dots text-2xl">&bull;&bull;&bull;</span>';
+            chatHistory.appendChild(loadingIndicator);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+
+            try {
+                // IMPORTANT CHANGE: The fetch call now goes to your own backend endpoint.
+                // It sends the user's message, and a user ID if applicable.
+                const response = await fetch('/api/chat', { // Your backend endpoint
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: userMessage,
+                        // In a real app, you would pass an identifier for the logged-in user.
+                        // userId: 'logged_in_user_id'
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Assuming your backend sends back a JSON object with a 'response' key
+                    const geminiResponseText = result.response; 
+                    chatHistory.removeChild(loadingIndicator);
+                    displayMessage(geminiResponseText, 'ai');
+                } else {
+                    chatHistory.removeChild(loadingIndicator);
+                    displayMessage("Sorry, I couldn't get a response from the server. Please try again.", 'ai');
+                }
+            } catch (error) {
+                console.error('Server Error:', error);
+                chatHistory.removeChild(loadingIndicator);
+                displayMessage("An error occurred. Please check the console.", 'ai');
+            } finally {
+                userInput.disabled = false;
+                sendButton.disabled = false;
+                userInput.focus();
+            }
+        });
+
+        closeMessageButton.addEventListener('click', () => {
+            messageBox.classList.add('hidden');
+        });
+    </script>
+
+</body>
+</html>
