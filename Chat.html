@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Zenntrix</title>
-    <!-- Use Tailwind CSS for clean, mobile-first styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -12,7 +11,7 @@
             background-color: #f3f4f6;
         }
         .chat-bubble {
-            border-radius: 1.5rem; /* Large, rounded corners */
+            border-radius: 1.5rem;
             padding: 1rem;
             max-width: 80%;
             word-wrap: break-word;
@@ -44,21 +43,17 @@
     </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-4">
-
     <!-- Main Container -->
     <div class="flex flex-col w-full max-w-2xl bg-white shadow-xl rounded-2xl overflow-hidden p-6 space-y-4">
-
         <!-- Header -->
         <header class="text-center">
             <h1 class="text-3xl font-bold text-gray-800">Zenntrix</h1>
             <p class="text-gray-500">Your AI coding companion</p>
         </header>
-
         <!-- Chat History -->
         <div id="chat-history" class="flex-1 overflow-y-auto space-y-4 p-4 h-96 border border-gray-200 rounded-xl">
             <!-- Chat messages will be dynamically added here -->
         </div>
-
         <!-- User Input Form -->
         <form id="chat-form" class="flex gap-2">
             <input
@@ -76,9 +71,7 @@
                 Send
             </button>
         </form>
-
     </div>
-
     <!-- Message Box for Alerts (instead of alert()) -->
     <div id="message-box" class="fixed top-0 inset-x-0 p-4 hidden">
         <div class="bg-red-500 text-white p-4 rounded-xl shadow-lg flex justify-between items-center">
@@ -86,10 +79,37 @@
             <button id="close-message" class="text-white hover:text-red-200 focus:outline-none">&times;</button>
         </div>
     </div>
-    
+
     <script>
-        // The API key is now handled by your backend, so we don't need it here.
-        // We will now send the user message to our own server.
+        // CRITICAL SECURITY WARNING:
+        // DO NOT USE THIS CODE IN A PRODUCTION ENVIRONMENT.
+        // YOUR API KEY WILL BE VISIBLE TO ANYONE WHO VIEWS YOUR WEBPAGE SOURCE.
+        // This is for local prototyping and testing ONLY.
+        // For a real application, the API call must be made from a secure backend server.
+
+        // You must paste your valid Gemini API key here to make this work.
+        const GEMINI_API_KEY = 'AIzaSyBHeV_rrXZ3bsosnYMZ5oBtZZb8dr8DQAU';
+
+        // Simulated hardcoded user data that would normally come from your database
+        const simulatedUserData = {
+            username: "CoderHero",
+            platforms: [
+                {
+                    site: "Codeforces",
+                    rating: 1850,
+                    solved_problems: 512,
+                    last_contest_rank: 25,
+                    rank_change_since_last_contest: "+30"
+                },
+                {
+                    site: "CodeChef",
+                    rating: 1920,
+                    solved_problems: 650,
+                    badges_unlocked: ["Star Coder", "Problem Solver"]
+                }
+            ]
+        };
+
         const chatForm = document.getElementById('chat-form');
         const userInput = document.getElementById('user-input');
         const chatHistory = document.getElementById('chat-history');
@@ -118,6 +138,10 @@
             if (userMessage === '') {
                 return;
             }
+            if (GEMINI_API_KEY === 'PASTE_YOUR_REVOKED_API_KEY_HERE' || !GEMINI_API_KEY) {
+                showMessageBox("Error: Please add your Gemini API key in the script.");
+                return;
+            }
 
             displayMessage(userMessage, 'user');
             userInput.value = '';
@@ -131,33 +155,48 @@
             chatHistory.scrollTop = chatHistory.scrollHeight;
 
             try {
-                // IMPORTANT CHANGE: The fetch call now goes to your own backend endpoint.
-                // It sends the user's message, and a user ID if applicable.
-                const response = await fetch('/api/chat', { // Your backend endpoint
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        message: userMessage,
-                        // In a real app, you would pass an identifier for the logged-in user.
-                        // userId: 'logged_in_user_id'
-                    })
-                });
+                // This is the simulated backend logic: it builds the personalized prompt
+                const systemPrompt = `You are a helpful and positive AI coding companion named Zenntrix.
+                                     You are helping a user named ${simulatedUserData.username}.
+                                     Below is the user's latest progress data from Codeforces and CodeChef.
+                                     Use this information to respond to their queries in a personalized and encouraging way.
+                                     Do not mention that this data was provided to you.
+                                     
+                                     User data:
+                                     ${JSON.stringify(simulatedUserData, null, 2)}`;
 
+                const fullPrompt = systemPrompt + `\n\nUser's message: ${userMessage}`;
+                
+                const chatHistoryPayload = [
+                    {
+                        role: "user",
+                        parts: [{ text: fullPrompt }]
+                    }
+                ];
+
+                const payload = { contents: chatHistoryPayload };
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
                 const result = await response.json();
                 
-                if (response.ok) {
-                    // Assuming your backend sends back a JSON object with a 'response' key
-                    const geminiResponseText = result.response; 
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const geminiResponseText = result.candidates[0].content.parts[0].text;
                     chatHistory.removeChild(loadingIndicator);
                     displayMessage(geminiResponseText, 'ai');
                 } else {
                     chatHistory.removeChild(loadingIndicator);
-                    displayMessage("Sorry, I couldn't get a response from the server. Please try again.", 'ai');
+                    displayMessage("Sorry, I couldn't generate a response. Please try again.", 'ai');
                 }
             } catch (error) {
-                console.error('Server Error:', error);
+                console.error('API Error:', error);
                 chatHistory.removeChild(loadingIndicator);
                 displayMessage("An error occurred. Please check the console.", 'ai');
             } finally {
