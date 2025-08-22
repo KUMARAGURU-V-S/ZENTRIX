@@ -16,7 +16,7 @@ export default function Report() {
   // Add a new report
   const addReport = async () => {
     if (!reportText.trim()) {
-      alert("⚠ Report cannot be empty!");
+      alert("⚠️ Report cannot be empty!");
       return;
     }
     try {
@@ -79,7 +79,7 @@ export default function Report() {
               marginBottom: "10px",
               textAlign: "left",
             }}>
-            {r.report || "⚠ No report field"}
+            {r.report || "⚠️ No report field"}
             <br />
             <small>
               {r.createdAt?.toDate
