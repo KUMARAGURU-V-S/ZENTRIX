@@ -2,40 +2,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-//
-// ---------- Weather API ----------
-//
-const NWS_API_BASE = "https://api.weather.gov";
-const USER_AGENT = "weather-app/1.0";
-
-async function makeNWSRequest(url) {
-    const headers = {
-        "User-Agent": USER_AGENT,
-        Accept: "application/geo+json",
-    };
-    try {
-        const response = await fetch(url, { headers });
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return await response.json();
-    } catch (error) {
-        console.error("Error making NWS request:", error);
-        return null;
-    }
-}
-
-function formatAlert(feature) {
-    const props = feature.properties;
-    return [
-        `Event: ${props.event || "Unknown"}`,
-        `Area: ${props.areaDesc || "Unknown"}`,
-        `Severity: ${props.severity || "Unknown"}`,
-        `Status: ${props.status || "Unknown"}`,
-        `Headline: ${props.headline || "No headline"}`,
-        "---",
-    ].join("\n");
-}
+import { doc, setDoc, getDocs, collection } from "firebase/firestore";
+import { db } from "./firebase.js";
 
 //
 // ---------- Codeforces API ----------
@@ -56,11 +24,62 @@ async function makeCodeforcesRequest(endpoint) {
 }
 
 //
+// ---------- Generate Codeforces Report ----------
+//
+async function generateCodeforcesReport(handle) {
+    // Fetch profile
+    const profileData = await makeCodeforcesRequest(`user.info?handles=${handle}`);
+    if (!profileData || profileData.status !== "OK") {
+        throw new Error(`Failed to fetch Codeforces profile for ${handle}`);
+    }
+    const user = profileData.result[0];
+
+    // Fetch rating history
+    const ratingData = await makeCodeforcesRequest(`user.rating?handle=${handle}`);
+    let ratingSummary = "No contests participated yet.";
+    if (ratingData && ratingData.status === "OK" && ratingData.result.length > 0) {
+        const contests = ratingData.result.slice(-5);
+        ratingSummary = contests.map(c =>
+            `In ${c.contestName}, rating changed from ${c.oldRating} → ${c.newRating}.`
+        ).join(" ");
+    }
+
+    // Fetch submissions (unique problems solved)
+    const submissionData = await makeCodeforcesRequest(`user.status?handle=${handle}&from=1&count=1000`);
+    let solvedSummary = "No solved problem data available.";
+    if (submissionData && submissionData.status === "OK") {
+        const solved = new Set(
+            submissionData.result
+                .filter(sub => sub.verdict === "OK")
+                .map(sub => `${sub.problem.contestId}-${sub.problem.index}`)
+        );
+        solvedSummary = `The user has solved around ${solved.size} unique problems.`;
+    }
+
+    // Cleaned final report
+    const report = `
+${user.handle} is a ${user.rank || "newcomer"} on Codeforces with a current rating of ${user.rating || "N/A"} (max: ${user.maxRating || "N/A"} as ${user.maxRank || "N/A"}).
+They have a contribution score of ${user.contribution}.
+${ratingSummary}
+${solvedSummary}
+    `.replace(/\s+/g, " ").trim();
+
+    // Save into Firestore (collection: reports)
+    await setDoc(doc(db, "reports", `${handle}_${Date.now()}`), {
+        handle,
+        report,
+        timestamp: new Date(),
+    });
+
+    return report;
+}
+
+//
 // ---------- MCP Server ----------
 //
 const server = new McpServer({
-    name: "weather-codeforces",
-    version: "1.0.0",
+    name: "codeforces-reports",
+    version: "2.0.0",
     capabilities: {
         resources: {},
         tools: {},
@@ -68,66 +87,10 @@ const server = new McpServer({
 });
 
 //
-// ---------- Weather Tools ----------
-//
-server.tool("get-alerts", "Get weather alerts for a state", {
-    state: z.string().length(2).describe("Two-letter state code (e.g. CA, NY)"),
-}, async ({ state }) => {
-    const stateCode = state.toUpperCase();
-    const alertsUrl = `${NWS_API_BASE}/alerts?area=${stateCode}`;
-    const alertsData = await makeNWSRequest(alertsUrl);
-    if (!alertsData) {
-        return { content: [{ type: "text", text: "Failed to retrieve alerts data" }] };
-    }
-    const features = alertsData.features || [];
-    if (features.length === 0) {
-        return { content: [{ type: "text", text: `No active alerts for ${stateCode}` }] };
-    }
-    const formattedAlerts = features.map(formatAlert);
-    return { content: [{ type: "text", text: `Active alerts for ${stateCode}:\n\n${formattedAlerts.join("\n")}` }] };
-});
-
-server.tool("get-forecast", "Get weather forecast for a location", {
-    latitude: z.number().min(-90).max(90).describe("Latitude of the location"),
-    longitude: z.number().min(-180).max(180).describe("Longitude of the location"),
-}, async ({ latitude, longitude }) => {
-    const pointsUrl = `${NWS_API_BASE}/points/${latitude.toFixed(4)},${longitude.toFixed(4)}`;
-    const pointsData = await makeNWSRequest(pointsUrl);
-    if (!pointsData) {
-        return {
-            content: [{
-                type: "text",
-                text: `Failed to retrieve grid point data for coordinates: ${latitude}, ${longitude}.`,
-            }],
-        };
-    }
-    const forecastUrl = pointsData.properties?.forecast;
-    if (!forecastUrl) {
-        return { content: [{ type: "text", text: "Failed to get forecast URL from grid point data" }] };
-    }
-    const forecastData = await makeNWSRequest(forecastUrl);
-    if (!forecastData) {
-        return { content: [{ type: "text", text: "Failed to retrieve forecast data" }] };
-    }
-    const periods = forecastData.properties?.periods || [];
-    if (periods.length === 0) {
-        return { content: [{ type: "text", text: "No forecast periods available" }] };
-    }
-    const formattedForecast = periods.map((period) => [
-        `${period.name || "Unknown"}:`,
-        `Temperature: ${period.temperature || "Unknown"}°${period.temperatureUnit || "F"}`,
-        `Wind: ${period.windSpeed || "Unknown"} ${period.windDirection || ""}`,
-        `${period.shortForecast || "No forecast available"}`,
-        "---",
-    ].join("\n"));
-    return { content: [{ type: "text", text: `Forecast for ${latitude}, ${longitude}:\n\n${formattedForecast.join("\n")}` }] };
-});
-
-//
 // ---------- Codeforces Tools ----------
 //
-server.tool("get-codeforces-user", "Fetch Codeforces user profile information", {
-    handle: z.string().describe("Codeforces user handle (e.g., tourist, Benq)"),
+server.tool("get-codeforces-user", "Fetch Codeforces user profile", {
+    handle: z.string(),
 }, async ({ handle }) => {
     const data = await makeCodeforcesRequest(`user.info?handles=${handle}`);
     if (!data || data.status !== "OK") {
@@ -145,18 +108,33 @@ server.tool("get-codeforces-user", "Fetch Codeforces user profile information", 
     return { content: [{ type: "text", text }] };
 });
 
-server.tool("get-codeforces-rating", "Fetch Codeforces user rating history", {
-    handle: z.string().describe("Codeforces user handle"),
+server.tool("generate-codeforces-report", "Generate and save Codeforces report into Firestore", {
+    handle: z.string(),
 }, async ({ handle }) => {
-    const data = await makeCodeforcesRequest(`user.rating?handle=${handle}`);
-    if (!data || data.status !== "OK") {
-        return { content: [{ type: "text", text: `Failed to fetch rating history for ${handle}` }] };
+    try {
+        const report = await generateCodeforcesReport(handle);
+        return { content: [{ type: "text", text: `✅ Report generated & saved:\n\n${report}` }] };
+    } catch (err) {
+        console.error(err);
+        return { content: [{ type: "text", text: `Error: ${err.message}` }] };
     }
-    const contests = data.result.slice(-5); // last 5 contests
-    const formatted = contests.map(c =>
-        `${c.contestName}: ${c.oldRating} → ${c.newRating}`
-    ).join("\n");
-    return { content: [{ type: "text", text: `Recent rating changes for ${handle}:\n${formatted}` }] };
+});
+
+server.tool("get-reports", "Fetch all stored reports from Firestore", {}, async () => {
+    try {
+        const snapshot = await getDocs(collection(db, "reports"));
+        if (snapshot.empty) {
+            return { content: [{ type: "text", text: "No reports found in Firestore." }] };
+        }
+        const reports = [];
+        snapshot.forEach(doc => {
+            reports.push(doc.data().report);
+        });
+        return { content: [{ type: "text", text: reports.join("\n\n---\n\n") }] };
+    } catch (err) {
+        console.error("Error fetching reports:", err);
+        return { content: [{ type: "text", text: "Failed to fetch reports from Firestore." }] };
+    }
 });
 
 //
@@ -165,7 +143,7 @@ server.tool("get-codeforces-rating", "Fetch Codeforces user rating history", {
 async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error("Weather + Codeforces MCP Server running on stdio");
+    console.error("🚀 Codeforces Reports MCP Server running...");
 }
 
 main().catch((error) => {
