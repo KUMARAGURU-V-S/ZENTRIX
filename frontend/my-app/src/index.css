@@ -1,0 +1,11 @@
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* Prevents scrollbars on the body */
+  background-color: #121212; /* Match the app's background */
+  color-scheme: dark;
+}

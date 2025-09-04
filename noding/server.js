@@ -2,9 +2,10 @@
  * Combined Node.js Express Server for Gemini Chat and Function Calling
  *
  * This server handles a chat session, a set of functions for Codeforces,
- * and a fallback for general conversations.
+ * and a fallback for general conversations. It uses the ES module syntax.
  */
 
+// ES Module Imports
 import express from 'express';
 import cors from 'cors';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -23,16 +24,22 @@ app.use(express.json());
 
 // Get the API key from environment variables
 const geminiApiKey = process.env.GEMINI_API_KEY;
+const OPENWEATHERMAP_API_KEY = process.env.OPENWEATHER_API_KEY;
+const CODEFORCES_API_BASE = "https://codeforces.com/api";
+const OPENWEATHERMAP_API_BASE = "https://api.openweathermap.org/data/2.5/weather";
 
 if (!geminiApiKey) {
     console.error("Gemini API key is not defined. Please check your .env file.");
     process.exit(1);
 }
 
+if (!OPENWEATHERMAP_API_KEY) {
+    console.warn("OpenWeatherMap API key is not defined. Weather functionality will not work.");
+}
+
 //
-// ---------- Codeforces API and Helper Functions ----------
+// ---------- API and Helper Functions ----------
 //
-const CODEFORCES_API_BASE = "https://codeforces.com/api";
 
 async function makeCodeforcesRequest(endpoint) {
     try {
@@ -91,6 +98,34 @@ ${solvedSummary}
     }
 }
 
+async function getCurrentTemperature(location) {
+    if (!OPENWEATHERMAP_API_KEY) {
+        return JSON.stringify({ error: "OpenWeatherMap API key is not configured on the server." });
+    }
+    try {
+        const url = `${OPENWEATHERMAP_API_BASE}?q=${encodeURIComponent(location)}&units=metric&appid=${OPENWEATHERMAP_API_KEY}`;
+        const response = await axios.get(url);
+
+        const weatherData = response.data;
+        const temperature = weatherData.main.temp;
+        const description = weatherData.weather[0].description;
+        const city = weatherData.name;
+        const country = weatherData.sys.country;
+
+        const result = {
+            location: `${city}, ${country}`,
+            temperature: `${temperature}°C`,
+            description: description
+        };
+
+        return JSON.stringify(result);
+    } catch (error) {
+        const errorMessage = error.response?.data?.message || error.message;
+        console.error(`Error fetching weather for ${location}:`, errorMessage);
+        throw new Error(`Failed to get weather for ${location}. The location may be invalid or the API key is not working.`);
+    }
+}
+
 //
 // ---------- Gemini Tool Declarations ----------
 //
@@ -119,6 +154,9 @@ const availableFunctions = {
         const reports = [];
         snapshot.forEach(doc => reports.push(doc.data().report));
         return JSON.stringify({ message: "Stored reports fetched successfully.", reports: reports.join("\n\n---\n\n") });
+    },
+    getCurrentTemperature: async (args) => {
+        return await getCurrentTemperature(args.location);
     }
 };
 
@@ -160,7 +198,21 @@ const tools = [
                     type: "object",
                     properties: {},
                 },
-            }
+            },
+            {
+                name: "getCurrentTemperature",
+                description: "Gets the current temperature for a given location.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        location: {
+                            type: "string",
+                            description: "The city name, e.g. London or New York",
+                        },
+                    },
+                    required: ["location"],
+                },
+            },
         ],
     },
 ];
@@ -170,12 +222,11 @@ const tools = [
 //
 const genAI = new GoogleGenerativeAI(geminiApiKey);
 
-// CORRECT: Pass systemInstruction to the generative model itself
 const model = genAI.getGenerativeModel({
     model: "gemini-1.5-flash",
     systemInstruction: {
         parts: [{
-            text: "You are a helpful assistant with access to tools for Codeforces reports. Use these tools when requested. If you are asked to get user info or generate a report, call the appropriate function. If no function is needed, respond directly."
+            text: "You are a helpful assistant with access to tools for Codeforces reports and weather information. Use these tools when requested. If you are asked to get user info, generate a report, or get weather, call the appropriate function. If no function is needed, respond directly."
         }]
     }
 });
@@ -191,13 +242,14 @@ app.post('/api/chat', async (req, res) => {
             return res.status(400).json({ error: 'Message is required.' });
         }
 
-        // CORRECT: Now startChat only needs tools and history
         const chat = model.startChat({
             tools: tools,
         });
 
         const result = await chat.sendMessage(message);
         const response = result.response;
+
+        console.log("Full Gemini Response (Turn 1):", JSON.stringify(result, null, 2));
 
         if (response.toolCalls && response.toolCalls.length > 0) {
             let toolResponses = [];
@@ -233,8 +285,11 @@ app.post('/api/chat', async (req, res) => {
                 }
             }
 
+            // --- THIS IS THE CRITICAL CHANGE FOR THE SECOND TURN ---
             const finalResult = await chat.sendMessage(toolResponses);
             const finalResponseText = finalResult.response.text();
+
+            console.log("Full Gemini Response (Turn 2):", JSON.stringify(finalResult, null, 2));
 
             if (!finalResponseText) {
                 return res.status(500).json({ response: 'Sorry, I could not generate a response based on the data. Please try again.' });

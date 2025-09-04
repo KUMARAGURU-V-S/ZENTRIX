@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 
 const GeminiChat = () => {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([
+    { sender: 'gemini', text: 'Hello! How can I help you today?' }
+  ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isToolbarOpen, setIsToolbarOpen] = useState(false);
 
   const sendMessage = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
 
-    // Add user message to the chat history
     const userMessage = { sender: 'user', text: input };
     setMessages((currentMessages) => [...currentMessages, userMessage]);
     setInput('');
@@ -18,9 +20,7 @@ const GeminiChat = () => {
     try {
       const response = await fetch('http://localhost:3000/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: input }),
       });
 
@@ -29,58 +29,181 @@ const GeminiChat = () => {
       }
 
       const data = await response.json();
-
-      // Add Gemini's response to the chat history
       const geminiResponse = { sender: 'gemini', text: data.response };
       setMessages((currentMessages) => [...currentMessages, geminiResponse]);
-      setIsLoading(false);
-
     } catch (error) {
       console.error('Error communicating with backend:', error);
-      setIsLoading(false);
       setMessages((currentMessages) => [
         ...currentMessages,
         { sender: 'gemini', text: 'Sorry, something went wrong. Please try again.' },
       ]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  const styles = {
+    chatContainer: {
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100vh',
+      backgroundColor: '#121212',
+      color: 'white',
+      fontFamily: "'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
+    },
+    header: {
+      display: 'flex',
+      alignItems: 'center',
+      padding: '0 20px',
+      backgroundColor: '#1e1e1e',
+      borderBottom: '1px solid #333',
+      height: '60px',
+      flexShrink: 0,
+    },
+    title: {
+      fontSize: '24px',
+      fontWeight: 'bold',
+      marginLeft: '15px',
+    },
+    menuButton: {
+      background: 'none',
+      border: 'none',
+      color: 'white',
+      fontSize: '28px',
+      cursor: 'pointer',
+    },
+    mainContent: {
+      display: 'flex',
+      flex: 1,
+      overflow: 'hidden',
+    },
+    toolbar: {
+      width: isToolbarOpen ? '250px' : '0px',
+      backgroundColor: '#1e1e1e',
+      borderRight: isToolbarOpen ? '1px solid #333' : 'none',
+      padding: isToolbarOpen ? '20px' : '0',
+      overflow: 'hidden',
+      whiteSpace: 'nowrap',
+      transition: 'width 0.3s ease-in-out, padding 0.3s ease-in-out',
+    },
+    toolbarContent: {
+        color: 'white',
+    },
+    chatArea: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      overflowY: 'hidden',
+      minWidth: 0,
+    },
+    messageHistory: {
+      flex: 1,
+      overflowY: 'auto',
+      padding: '20px',
+    },
+    message: {
+      padding: '12px 18px',
+      borderRadius: '20px',
+      marginBottom: '12px',
+      maxWidth: '80%',
+      lineHeight: '1.5',
+      wordWrap: 'break-word',
+    },
+    userMessage: {
+      backgroundColor: '#007bff',
+      color: 'white',
+    },
+    geminiMessage: {
+      backgroundColor: '#333',
+      color: 'white',
+    },
+    loadingIndicator: {
+      display: 'flex',
+      justifyContent: 'flex-start',
+      color: '#888',
+      fontStyle: 'italic',
+    },
+    inputForm: {
+      display: 'flex',
+      padding: '20px',
+      borderTop: '1px solid #333',
+      backgroundColor: '#1e1e1e',
+    },
+    inputField: {
+      flex: 1,
+      padding: '12px',
+      borderRadius: '8px',
+      border: '1px solid #444',
+      backgroundColor: '#333',
+      color: 'white',
+      fontSize: '16px',
+    },
+    sendButton: {
+      padding: '12px 20px',
+      marginLeft: '10px',
+      borderRadius: '8px',
+      border: 'none',
+      backgroundColor: '#007bff',
+      color: 'white',
+      cursor: 'pointer',
+      fontSize: '16px',
+    },
+  };
+
   return (
-    <div style={{ maxWidth: '600px', margin: 'auto', padding: '20px', fontFamily: 'sans-serif' }}>
-      <h2>Gemini Chat</h2>
-      <div style={{ border: '1px solid #ccc', padding: '10px', height: '400px', overflowY: 'scroll', marginBottom: '10px', display: 'flex', flexDirection: 'column' }}>
-        {messages.map((msg, index) => (
-          <div key={index} style={{
-            alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-            backgroundColor: msg.sender === 'user' ? '#007bff' : '#f0f0f0',
-            color: msg.sender === 'user' ? 'white' : 'black',
-            padding: '8px 12px',
-            borderRadius: '15px',
-            marginBottom: '8px',
-            maxWidth: '80%',
-          }}>
-            {msg.text}
-          </div>
-        ))}
-        {isLoading && (
-          <div style={{ alignSelf: 'flex-start', color: '#888' }}>
-            ...Thinking
-          </div>
-        )}
-      </div>
-      <form onSubmit={sendMessage} style={{ display: 'flex' }}>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          disabled={isLoading}
-          placeholder="Type a message..."
-          style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
-        />
-        <button type="submit" disabled={isLoading} style={{ padding: '10px 15px', marginLeft: '10px', borderRadius: '5px', border: 'none', backgroundColor: '#007bff', color: 'white', cursor: 'pointer' }}>
-          Send
+    <div style={styles.chatContainer}>
+      <header style={styles.header}>
+        <button onClick={() => setIsToolbarOpen(!isToolbarOpen)} style={styles.menuButton}>
+          &#9776; {/* Hamburger icon */}
         </button>
-      </form>
+        <div style={styles.title}>Zentrix</div>
+      </header>
+
+      <div style={styles.mainContent}>
+        <div style={styles.toolbar}>
+            <div style={styles.toolbarContent}>
+                <h3>Toolbar</h3>
+                <p>Settings and options will go here.</p>
+            </div>
+        </div>
+
+        <div style={styles.chatArea}>
+          <div style={styles.messageHistory}>
+            {messages.map((msg, index) => (
+              <div key={index} style={{
+                display: 'flex',
+                justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                paddingRight: '10px',
+              }}>
+                <div style={{
+                  ...styles.message,
+                  ...(msg.sender === 'user' ? styles.userMessage : styles.geminiMessage)
+                }}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+            {isLoading && (
+              <div style={styles.loadingIndicator}>
+                ...Thinking
+              </div>
+            )}
+          </div>
+          <form onSubmit={sendMessage} style={styles.inputForm}>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              disabled={isLoading}
+              placeholder="Type a message to Zentrix..."
+              style={styles.inputField}
+            />
+            <button type="submit" disabled={isLoading} style={styles.sendButton}>
+              Send
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 };
