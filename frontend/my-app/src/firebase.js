@@ -8,13 +8,13 @@ import { getFirestore } from "firebase/firestore";  // ✅ Firestore
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCZ9iBbr260x1Ti4i9Q3tzm4-fQY6SumWM",
-  authDomain: "zentrix-1aa38.firebaseapp.com",
-  projectId: "zentrix-1aa38",
-  storageBucket: "zentrix-1aa38.firebasestorage.app",
-  messagingSenderId: "679639959572",
-  appId: "1:679639959572:web:e8c9bf21f72a207cb37f01",
-  measurementId: "G-FH60HGY6SY"
+  apiKey: "AIzaSyB2x7FRB-d_jZJJkderBMZxG4zUIX0REig",
+  authDomain: "zentrix-9c750.firebaseapp.com",
+  projectId: "zentrix-9c750",
+  storageBucket: "zentrix-9c750.firebasestorage.app",
+  messagingSenderId: "167208189493",
+  appId: "1:167208189493:web:6f0456d2ee94a208673b7c",
+  measurementId: "G-LF8QM3D5B9",
 };
 
 // Initialize Firebase
