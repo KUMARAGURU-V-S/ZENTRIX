@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-import { doc, setDoc, getDocs, collection } from "firebase/firestore";
+import { doc, setDoc, getDocs, collection, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "./firebase.js";
 
 //
@@ -78,13 +78,92 @@ ${solvedSummary}
 // ---------- MCP Server ----------
 //
 const server = new McpServer({
-    name: "codeforces-reports",
-    version: "2.0.0",
+    name: "zentrix-task-scheduler",
+    version: "1.0.0",
     capabilities: {
         resources: {},
         tools: {},
     },
 });
+
+//
+// ---------- Task Scheduler Tools ----------
+//
+server.tool("create-task", "Create a new task", {
+    description: z.string(),
+    deadline: z.string().datetime(),
+}, async ({ description, deadline }) => {
+    try {
+        const id = `task_${Date.now()}`;
+        await setDoc(doc(db, "tasks", id), {
+            id,
+            description,
+            deadline,
+        });
+        return { content: [{ type: "text", text: `✅ Task created: ${description}` }] };
+    } catch (err) {
+        console.error(err);
+        return { content: [{ type: "text", text: `Error: ${err.message}` }] };
+    }
+});
+
+server.tool("get-tasks", "Fetch all tasks from Firestore", {
+    sortBy: z.enum(["deadline", "description"]).optional(),
+}, async ({ sortBy }) => {
+    try {
+        const snapshot = await getDocs(collection(db, "tasks"));
+        if (snapshot.empty) {
+            return { content: [{ type: "text", text: "No tasks found in Firestore." }] };
+        }
+        const tasks = [];
+        snapshot.forEach(doc => {
+            tasks.push(doc.data());
+        });
+
+        if (sortBy) {
+            tasks.sort((a, b) => {
+                if (a[sortBy] < b[sortBy]) return -1;
+                if (a[sortBy] > b[sortBy]) return 1;
+                return 0;
+            });
+        }
+
+        return { content: [{ type: "json", json: tasks }] };
+    } catch (err) {
+        console.error("Error fetching tasks:", err);
+        return { content: [{ type: "text", text: "Failed to fetch tasks from Firestore." }] };
+    }
+});
+
+server.tool("update-task", "Update a task", {
+    id: z.string(),
+    description: z.string().optional(),
+    deadline: z.string().datetime().optional(),
+}, async ({ id, description, deadline }) => {
+    try {
+        const data = {};
+        if (description) data.description = description;
+        if (deadline) data.deadline = deadline;
+        await updateDoc(doc(db, "tasks", id), data);
+        return { content: [{ type: "text", text: `✅ Task updated: ${id}` }] };
+    } catch (err) {
+        console.error(err);
+        return { content: [{ type: "text", text: `Error: ${err.message}` }] };
+    }
+});
+
+server.tool("delete-task", "Delete a task", {
+    id: z.string(),
+}, async ({ id }) => {
+    try {
+        await deleteDoc(doc(db, "tasks", id));
+        return { content: [{ type: "text", text: `✅ Task deleted: ${id}` }] };
+    } catch (err) {
+        console.error(err);
+        return { content: [{ type: "text", text: `Error: ${err.message}` }] };
+    }
+});
+
 
 //
 // ---------- Codeforces Tools ----------
@@ -143,7 +222,7 @@ server.tool("get-reports", "Fetch all stored reports from Firestore", {}, async 
 async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error("🚀 Codeforces Reports MCP Server running...");
+    console.error("🚀 ZENTRIX MCP Server running...");
 }
 
 main().catch((error) => {

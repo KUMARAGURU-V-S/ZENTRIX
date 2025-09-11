@@ -8,7 +8,9 @@
   },
   "scripts": {
     "build": "tsc",
-    "client": "node build/client.js"
+    "client": "node build/client.js",
+    "task-server": "node task-server.js",
+    "mcp-server": "node mcp-server.js"
   },
   "files": [
     "build"
