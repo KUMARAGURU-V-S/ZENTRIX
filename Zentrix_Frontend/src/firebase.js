@@ -1,7 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
-// TODO: Replace with your real Firebase config (same project you used in frontend)
 const firebaseConfig = {
   apiKey: "AIzaSyB2x7FRB-d_jZJJkderBMZxG4zUIX0REig",
   authDomain: "zentrix-9c750.firebaseapp.com",
