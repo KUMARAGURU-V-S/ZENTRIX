@@ -7,7 +7,14 @@
     "weather": "./build/index.js"
   },
   "scripts": {
+<<<<<<< HEAD
     "client": "node build/client.js"
+=======
+        "build": "tsc",
+    "client": "node build/client.js",
+    "task-server": "node task-server.js",
+    "mcp-server": "node mcp-server.js"
+>>>>>>> 42a0779248118eb35ceecaf3122cba581c13d2cf
   },
   "files": [
     "build"
