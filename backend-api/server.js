@@ -52,44 +52,55 @@ app.post('/api/reports', async (req, res) => {
     return res.status(400).json({ message: 'Username (handle) is required.' });
   }
 
-  const report = {
-    username: handle,
-    date: new Date().toISOString(),
-    summary: `The AI-driven analysis of ${handle}'s coding performance indicates a strong affinity for algorithmic problem-solving. A consistent increase in submission volume suggests a disciplined approach to skill development. While the user excels in data structures, there are opportunities for improvement in optimizing space complexity, particularly in advanced dynamic programming challenges.`,
-    performanceMetrics: {
-      problemSolved: Math.floor(Math.random() * 1000),
-      averageTime: `${Math.floor(Math.random() * 20) + 5} min`,
-      accuracy: `${Math.floor(Math.random() * 30) + 70}%`,
-      languages: ["Python", "C++", "JavaScript", "Rust"].sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 2) + 2),
-    },
-    strengths: [
-      "Dynamic Programming",
-      "Graph Traversal",
-      "Recursion",
-      "Data Structures",
-      "Bit Manipulation",
-      "Number Theory"
-    ].sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 2),
-    weaknesses: [
-      "Greedy Algorithms",
-      "Space Optimization",
-      "Competitive Programming Speed",
-      "Combinatorics",
-      "String Algorithms"
-    ].sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 2) + 2),
-    difficultyBreakdown: [
-      { difficulty: "Easy", count: Math.floor(Math.random() * 500) },
-      { difficulty: "Medium", count: Math.floor(Math.random() * 300) },
-      { difficulty: "Hard", count: Math.floor(Math.random() * 100) },
-    ],
-  };
-
   try {
+    // Fetch user data from Codeforces API
+    const cfResponse = await axios.get(`https://codeforces.com/api/user.info?handles=${handle}`);
+    if (cfResponse.data.status !== 'OK') {
+      return res.status(404).json({ message: 'Codeforces user not found' });
+    }
+    const cfUserData = cfResponse.data.result[0];
+
+    // TODO: Fetch user submission data for more detailed analysis
+
+    const report = {
+      username: handle,
+      date: new Date().toISOString(),
+      summary: `The AI-driven analysis of ${handle}'s coding performance indicates a strong affinity for algorithmic problem-solving. Key metrics from Codeforces show a rating of ${cfUserData.rating || 'N/A'} with a rank of ${cfUserData.rank || 'N/A'}.`,
+      performanceMetrics: {
+        problemSolved: cfUserData.friendOfCount, // Using friendOfCount as a proxy for solved problems for now
+        averageTime: `${Math.floor(Math.random() * 20) + 5} min`, // Placeholder
+        accuracy: `${Math.floor(Math.random() * 30) + 70}%`, // Placeholder
+        languages: ["Python", "C++", "JavaScript", "Rust"].sort(() => 0.5 - Math.random()).slice(0, 1), // Placeholder
+      },
+      strengths: [
+        "Dynamic Programming",
+        "Graph Traversal",
+        "Data Structures",
+      ].sort(() => 0.5 - Math.random()).slice(0, 2), // Placeholder
+      weaknesses: [
+        "Greedy Algorithms",
+        "Space Optimization",
+      ].sort(() => 0.5 - Math.random()).slice(0, 1), // Placeholder
+      difficultyBreakdown: [
+        { difficulty: "Easy", count: Math.floor(Math.random() * cfUserData.friendOfCount * 0.6) },
+        { difficulty: "Medium", count: Math.floor(Math.random() * cfUserData.friendOfCount * 0.3) },
+        { difficulty: "Hard", count: Math.floor(Math.random() * cfUserData.friendOfCount * 0.1) },
+      ],
+      codeforcesData: {
+        rating: cfUserData.rating,
+        rank: cfUserData.rank,
+        maxRating: cfUserData.maxRating,
+        maxRank: cfUserData.maxRank,
+        avatar: cfUserData.avatar,
+      }
+    };
+
     const docRef = await addDoc(collection(db, "reports"), report);
     res.status(201).json({ ...report, id: docRef.id });
+
   } catch (error) {
-    console.error("Error adding document: ", error);
-    res.status(500).json({ message: "Error saving report to database", error: error.message });
+    console.error("Error generating report: ", error);
+    res.status(500).json({ message: "Error generating report", error: error.message });
   }
 });
 
