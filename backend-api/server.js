@@ -1,5 +1,21 @@
 import express from 'express';
 import axios from 'axios';
+import { initializeApp } from 'firebase/app';
+import { getFirestore, collection, addDoc } from 'firebase/firestore';
+
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyB2x7FRB-d_jZJJkderBMZxG4zUIX0REig",
+  authDomain: "zentrix-9c750.firebaseapp.com",
+  projectId: "zentrix-9c750",
+  storageBucket: "zentrix-9c750.firebasestorage.app",
+  messagingSenderId: "167208189493",
+  appId: "1:167208189493:web:6f0456d2ee94a208673b7c",
+};
+
+// Initialize Firebase
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -29,19 +45,16 @@ app.get('/codeforces/:username', async (req, res) => {
   }
 });
 
-app.post('/api/reports', (req, res) => {
+app.post('/api/reports', async (req, res) => {
   const { handle } = req.body;
 
   if (!handle) {
     return res.status(400).json({ message: 'Username (handle) is required.' });
   }
 
-  // For now, we'll use a slightly modified version of the fakeapi logic.
-  // In the future, this would involve fetching real data and performing analysis.
   const report = {
-    id: Date.now(),
     username: handle,
-    date: new Date().toLocaleDateString(),
+    date: new Date().toISOString(),
     summary: `The AI-driven analysis of ${handle}'s coding performance indicates a strong affinity for algorithmic problem-solving. A consistent increase in submission volume suggests a disciplined approach to skill development. While the user excels in data structures, there are opportunities for improvement in optimizing space complexity, particularly in advanced dynamic programming challenges.`,
     performanceMetrics: {
       problemSolved: Math.floor(Math.random() * 1000),
@@ -71,7 +84,13 @@ app.post('/api/reports', (req, res) => {
     ],
   };
 
-  res.json(report);
+  try {
+    const docRef = await addDoc(collection(db, "reports"), report);
+    res.status(201).json({ ...report, id: docRef.id });
+  } catch (error) {
+    console.error("Error adding document: ", error);
+    res.status(500).json({ message: "Error saving report to database", error: error.message });
+  }
 });
 
 app.listen(PORT, () => {

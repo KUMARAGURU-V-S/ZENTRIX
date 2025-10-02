@@ -6,10 +6,13 @@ import ProfilePage from './pages/ProfilePage.tsx';
 import SubmissionDetailsPage from './pages/SubmissionDetailsPage.tsx';
 import './styles/main.css';
 
+import { db } from './firebase.js';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+
 const API_URL = 'http://localhost:3001/api';
 
 export type Report = {
-  id: number;
+  id: string;
   username: string;
   date: string;
   summary: string;
@@ -38,19 +41,18 @@ function App() {
   const [generatedReports, setGeneratedReports] = useState<Report[]>([]);
 
   useEffect(() => {
-    const fetchReports = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(`${API_URL}/reports`);
-        const reports = await response.json();
-        setGeneratedReports(reports);
-      } catch (error) {
-        console.error("Error fetching reports:", error);
-      }
+    setLoading(true);
+    const q = query(collection(db, "reports"), orderBy("date", "desc"));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const reports: Report[] = [];
+      querySnapshot.forEach((doc) => {
+        reports.push({ id: doc.id, ...doc.data() } as Report);
+      });
+      setGeneratedReports(reports);
       setLoading(false);
-    };
+    });
 
-    fetchReports();
+    return () => unsubscribe();
   }, []);
 
   const handleGenerateReport = async (username: string) => {
@@ -65,7 +67,7 @@ function App() {
         body: JSON.stringify({ handle: username }),
       });
       const newReport = await response.json();
-      setGeneratedReports(prevReports => [newReport, ...prevReports]);
+      // The onSnapshot listener will automatically update the generatedReports state
       setCurrentReport(newReport);
     } catch (error) {
       console.error("Error fetching report:", error);
