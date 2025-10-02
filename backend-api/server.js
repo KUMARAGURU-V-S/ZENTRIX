@@ -45,6 +45,13 @@ app.get('/codeforces/:username', async (req, res) => {
   }
 });
 
+app.post('/api/chat', (req, res) => {
+  const { message } = req.body;
+  console.log('Received message:', message);
+  // For now, just echo the message back with a simple reply.
+  res.json({ reply: `You said: "${message}". I am still under development.` });
+});
+
 app.post('/api/reports', async (req, res) => {
   const { handle } = req.body;
 
@@ -53,39 +60,67 @@ app.post('/api/reports', async (req, res) => {
   }
 
   try {
-    // Fetch user data from Codeforces API
-    const cfResponse = await axios.get(`https://codeforces.com/api/user.info?handles=${handle}`);
-    if (cfResponse.data.status !== 'OK') {
+    // Fetch user data and submissions from Codeforces API
+    const [infoResponse, statusResponse] = await Promise.all([
+      axios.get(`https://codeforces.com/api/user.info?handles=${handle}`),
+      axios.get(`https://codeforces.com/api/user.status?handle=${handle}`)
+    ]);
+
+    if (infoResponse.data.status !== 'OK') {
       return res.status(404).json({ message: 'Codeforces user not found' });
     }
-    const cfUserData = cfResponse.data.result[0];
+    if (statusResponse.data.status !== 'OK') {
+      return res.status(500).json({ message: 'Could not fetch user submissions from Codeforces' });
+    }
 
-    // TODO: Fetch user submission data for more detailed analysis
+    const cfUserData = infoResponse.data.result[0];
+    const submissions = statusResponse.data.result;
+
+    // --- Deeper Analysis Logic ---
+    const acceptedSubmissions = submissions.filter(sub => sub.verdict === 'OK');
+    const solvedProblems = new Set(acceptedSubmissions.map(sub => `${sub.problem.contestId}-${sub.problem.index}`));
+
+    const languageCounts = acceptedSubmissions.reduce((acc, sub) => {
+      acc[sub.programmingLanguage] = (acc[sub.programmingLanguage] || 0) + 1;
+      return acc;
+    }, {});
+
+    const tagCounts = acceptedSubmissions.reduce((acc, sub) => {
+      sub.problem.tags.forEach(tag => {
+        acc[tag] = (acc[tag] || 0) + 1;
+      });
+      return acc;
+    }, {});
+
+    const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
+
+    const strengths = sortedTags.slice(0, 3).map(entry => entry[0]);
+    const weaknesses = sortedTags.slice(-3).map(entry => entry[0]); // Simple proxy for weaknesses
+
+    const accuracy = submissions.length > 0 ? (acceptedSubmissions.length / submissions.length) * 100 : 0;
 
     const report = {
       username: handle,
       date: new Date().toISOString(),
-      summary: `The AI-driven analysis of ${handle}'s coding performance indicates a strong affinity for algorithmic problem-solving. Key metrics from Codeforces show a rating of ${cfUserData.rating || 'N/A'} with a rank of ${cfUserData.rank || 'N/A'}.`,
+      summary: `Analysis of ${solvedProblems.size} solved problems. ${handle} has a rating of ${cfUserData.rating || 'N/A'} and a rank of ${cfUserData.rank || 'N/A'}. Strengths appear to be in ${strengths.join(', ')}.`,
       performanceMetrics: {
-        problemSolved: cfUserData.friendOfCount, // Using friendOfCount as a proxy for solved problems for now
+        problemSolved: solvedProblems.size,
         averageTime: `${Math.floor(Math.random() * 20) + 5} min`, // Placeholder
-        accuracy: `${Math.floor(Math.random() * 30) + 70}%`, // Placeholder
-        languages: ["Python", "C++", "JavaScript", "Rust"].sort(() => 0.5 - Math.random()).slice(0, 1), // Placeholder
+        accuracy: `${accuracy.toFixed(2)}%`,
+        languages: Object.keys(languageCounts),
       },
-      strengths: [
-        "Dynamic Programming",
-        "Graph Traversal",
-        "Data Structures",
-      ].sort(() => 0.5 - Math.random()).slice(0, 2), // Placeholder
-      weaknesses: [
-        "Greedy Algorithms",
-        "Space Optimization",
-      ].sort(() => 0.5 - Math.random()).slice(0, 1), // Placeholder
-      difficultyBreakdown: [
-        { difficulty: "Easy", count: Math.floor(Math.random() * cfUserData.friendOfCount * 0.6) },
-        { difficulty: "Medium", count: Math.floor(Math.random() * cfUserData.friendOfCount * 0.3) },
-        { difficulty: "Hard", count: Math.floor(Math.random() * cfUserData.friendOfCount * 0.1) },
-      ],
+      strengths: strengths,
+      weaknesses: weaknesses,
+      difficultyBreakdown: acceptedSubmissions.reduce((acc, sub) => {
+        const difficulty = sub.problem.rating ? (sub.problem.rating < 1200 ? 'Easy' : sub.problem.rating < 1600 ? 'Medium' : 'Hard') : 'N/A';
+        const existing = acc.find(d => d.difficulty === difficulty);
+        if (existing) {
+          existing.count++;
+        } else {
+          acc.push({ difficulty, count: 1 });
+        }
+        return acc;
+      }, []),
       codeforcesData: {
         rating: cfUserData.rating,
         rank: cfUserData.rank,
@@ -104,6 +139,10 @@ app.post('/api/reports', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Backend API running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`Backend API running on port ${PORT}`);
+  });
+}
+
+export default app;

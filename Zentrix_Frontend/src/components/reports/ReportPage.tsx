@@ -25,26 +25,32 @@ function ReportPage({ reportData, onBack }: ReportPageProps) {
   return (
     <div className="report-dashboard">
       <header className="report-header">
-        <h1 className="report-title">Performance Overview</h1>
-        <p className="report-subtitle">Report for <span className="username">{data.username}</span></p>
+        <div className="report-header-content">
+          <img src={data.codeforcesData.avatar} alt={`${data.username}'s avatar`} className="avatar" />
+          <div>
+            <h1 className="report-title">Performance Overview</h1>
+            <p className="report-subtitle">Report for <span className="username">{data.username}</span></p>
+          </div>
+        </div>
+        <Button onClick={onBack} loading={false}>Go Back</Button>
       </header>
 
       <div className="metrics-grid">
+        <Card className="metric-card">
+          <p className="metric-label">Rating</p>
+          <h2 className="metric-value">{data.codeforcesData.rating} ({data.codeforcesData.rank})</h2>
+        </Card>
+        <Card className="metric-card">
+          <p className="metric-label">Max Rating</p>
+          <h2 className="metric-value">{data.codeforcesData.maxRating} ({data.codeforcesData.maxRank})</h2>
+        </Card>
         <Card className="metric-card">
           <p className="metric-label">Problems Solved</p>
           <h2 className="metric-value">{data.performanceMetrics.problemSolved}</h2>
         </Card>
         <Card className="metric-card">
-          <p className="metric-label">Avg. Time</p>
-          <h2 className="metric-value">{data.performanceMetrics.averageTime}</h2>
-        </Card>
-        <Card className="metric-card">
           <p className="metric-label">Accuracy Rate</p>
           <h2 className="metric-value">{data.performanceMetrics.accuracy}</h2>
-        </Card>
-        <Card className="metric-card">
-          <p className="metric-label">Languages Used</p>
-          <h2 className="metric-value">{data.performanceMetrics.languages.length}</h2>
         </Card>
       </div>
 
@@ -76,10 +82,14 @@ function ReportPage({ reportData, onBack }: ReportPageProps) {
             ))}
           </ul>
         </Card>
-      </div>
-
-      <div className="back-button-container">
-        <Button onClick={onBack} loading={false}>Go Back</Button>
+        <Card className="section-card">
+          <h3 className="section-title">Languages Used</h3>
+          <ul className="languages-list">
+            {data.performanceMetrics.languages.map((lang: string, index: number) => (
+              <li key={index} className="list-item lang-item">{lang}</li>
+            ))}
+          </ul>
+        </Card>
       </div>
     </div>
   );

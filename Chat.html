@@ -81,34 +81,6 @@
     </div>
 
     <script>
-        // CRITICAL SECURITY WARNING:
-        // DO NOT USE THIS CODE IN A PRODUCTION ENVIRONMENT.
-        // YOUR API KEY WILL BE VISIBLE TO ANYONE WHO VIEWS YOUR WEBPAGE SOURCE.
-        // This is for local prototyping and testing ONLY.
-        // For a real application, the API call must be made from a secure backend server.
-
-        // You must paste your valid Gemini API key here to make this work.
-        const GEMINI_API_KEY = 'AIzaSyBHeV_rrXZ3bsosnYMZ5oBtZZb8dr8DQAU';
-
-        // Simulated hardcoded user data that would normally come from your database
-        const simulatedUserData = {
-            username: "CoderHero",
-            platforms: [
-                {
-                    site: "Codeforces",
-                    rating: 1850,
-                    solved_problems: 512,
-                    last_contest_rank: 25,
-                    rank_change_since_last_contest: "+30"
-                },
-                {
-                    site: "CodeChef",
-                    rating: 1920,
-                    solved_problems: 650,
-                    badges_unlocked: ["Star Coder", "Problem Solver"]
-                }
-            ]
-        };
 
         const chatForm = document.getElementById('chat-form');
         const userInput = document.getElementById('user-input');
@@ -138,10 +110,6 @@
             if (userMessage === '') {
                 return;
             }
-            if (GEMINI_API_KEY === 'PASTE_YOUR_REVOKED_API_KEY_HERE' || !GEMINI_API_KEY) {
-                showMessageBox("Error: Please add your Gemini API key in the script.");
-                return;
-            }
 
             displayMessage(userMessage, 'user');
             userInput.value = '';
@@ -155,46 +123,17 @@
             chatHistory.scrollTop = chatHistory.scrollHeight;
 
             try {
-                // This is the simulated backend logic: it builds the personalized prompt
-                const systemPrompt = `You are a helpful and positive AI coding companion named Zenntrix.
-                                     You are helping a user named ${simulatedUserData.username}.
-                                     Below is the user's latest progress data from Codeforces and CodeChef.
-                                     Use this information to respond to their queries in a personalized and encouraging way.
-                                     Do not mention that this data was provided to you.
-                                     
-                                     User data:
-                                     ${JSON.stringify(simulatedUserData, null, 2)}`;
-
-                const fullPrompt = systemPrompt + `\n\nUser's message: ${userMessage}`;
-                
-                const chatHistoryPayload = [
-                    {
-                        role: "user",
-                        parts: [{ text: fullPrompt }]
-                    }
-                ];
-
-                const payload = { contents: chatHistoryPayload };
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-
-                const response = await fetch(apiUrl, {
+                const response = await fetch('http://localhost:3001/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ message: userMessage })
                 });
                 
                 const result = await response.json();
                 
-                if (result.candidates && result.candidates.length > 0 &&
-                    result.candidates[0].content && result.candidates[0].content.parts &&
-                    result.candidates[0].content.parts.length > 0) {
-                    const geminiResponseText = result.candidates[0].content.parts[0].text;
-                    chatHistory.removeChild(loadingIndicator);
-                    displayMessage(geminiResponseText, 'ai');
-                } else {
-                    chatHistory.removeChild(loadingIndicator);
-                    displayMessage("Sorry, I couldn't generate a response. Please try again.", 'ai');
-                }
+                chatHistory.removeChild(loadingIndicator);
+                displayMessage(result.reply, 'ai');
+
             } catch (error) {
                 console.error('API Error:', error);
                 chatHistory.removeChild(loadingIndicator);

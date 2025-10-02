@@ -18,13 +18,20 @@ export type Report = {
   summary: string;
   performanceMetrics: {
     problemSolved: number;
-    averageTime: string | number;
-    accuracy: string | number;
+    averageTime: string;
+    accuracy: string;
     languages: string[];
   };
   strengths: string[];
   weaknesses: string[];
   difficultyBreakdown: { difficulty: string; count: number }[];
+  codeforcesData: {
+    rating: number;
+    rank: string;
+    maxRating: number;
+    maxRank: string;
+    avatar: string;
+  };
   error?: string;
 };
 
