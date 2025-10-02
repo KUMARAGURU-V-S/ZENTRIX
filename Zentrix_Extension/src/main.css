@@ -1,0 +1,142 @@
+/* General Body and Font */
+body {
+  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f4f7f6;
+  color: #333;
+  min-width: 320px; /* Slightly wider for a professional feel */
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Container for the entire popup content */
+.popup-container {
+  width: 100%;
+  max-width: 300px; /* Max width for a clean look */
+  padding: 20px;
+  box-sizing: border-box;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+/* Headings */
+h1, h2, h3 {
+  color: #2c3e50;
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+h1 { font-size: 1.5em; }
+h2 { font-size: 1.3em; }
+h3 { font-size: 1.1em; }
+
+/* Input Fields */
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+  width: calc(100% - 20px); /* Account for padding */
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 0.95em;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease-in-out;
+}
+
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="text"]:focus {
+  border-color: #007bff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+/* Buttons */
+button {
+  width: 100%;
+  padding: 10px 15px;
+  margin-bottom: 10px;
+  border: none;
+  border-radius: 5px;
+  background-color: #007bff;
+  color: white;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+}
+
+button:hover {
+  background-color: #0056b3;
+  transform: translateY(-1px);
+}
+
+button:active {
+  background-color: #004085;
+  transform: translateY(0);
+}
+
+button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Secondary Buttons (e.g., "Go to Sign Up") */
+button.secondary {
+  background-color: #6c757d;
+}
+
+button.secondary:hover {
+  background-color: #5a6268;
+}
+
+/* Error Messages */
+.error-message {
+  color: #dc3545;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  padding: 8px;
+  border-radius: 5px;
+  margin-bottom: 15px;
+  font-size: 0.9em;
+}
+
+/* Profile Display */
+.profile-display {
+  text-align: left;
+}
+
+.profile-display img {
+  display: block;
+  margin: 0 auto 15px auto;
+  border: 2px solid #ddd;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.profile-display p {
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.profile-display a {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.profile-display a:hover {
+  text-decoration: underline;
+}
+
+/* Loading State */
+.loading-message {
+  color: #007bff;
+  font-weight: 500;
+}

@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Zentrix",
+  "version": "1.0",
+  "description": "A browser extension for Zentrix.",
+  "action": {
+    "default_popup": "dist/popup.html"
+  },
+  "host_permissions": [
+    "http://localhost:3000/"
+  ]
+}

@@ -1,24 +1,20 @@
 {
-  "name": "weather",
+  "name": "zentrix-root",
+  "private": true,
   "version": "1.0.0",
+  "workspaces": [
+    "backend-api",
+    "Zentrix_Extension",
+    "Zentrix_Frontend"
+  ],
   "main": "index.js",
   "type": "module",
-  "bin": {
-    "weather": "./build/index.js"
-  },
   "scripts": {
-<<<<<<< HEAD
-    "client": "node build/client.js"
-=======
-        "build": "tsc",
+    "build": "tsc",
     "client": "node build/client.js",
     "task-server": "node task-server.js",
     "mcp-server": "node mcp-server.js"
->>>>>>> 42a0779248118eb35ceecaf3122cba581c13d2cf
   },
-  "files": [
-    "build"
-  ],
   "keywords": [],
   "author": "",
   "license": "ISC",
