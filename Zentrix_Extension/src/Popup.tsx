@@ -10,7 +10,9 @@ function Popup() {
   const [view, setView] = useState('login'); // 'login', 'signup', 'profile', 'codeforces'
   const [error, setError] = useState('');
   const [codeforcesUsername, setCodeforcesUsername] = useState('');
+  const [platform, setPlatform] = useState('codeforces');
   const [codeforcesData, setCodeforcesData] = useState(null);
+  const [lastCodeforcesData, setLastCodeforcesData] = useState(null);
   const [loadingCodeforces, setLoadingCodeforces] = useState(false);
 
   useEffect(() => {
@@ -26,6 +28,7 @@ function Popup() {
   }, []);
 
   const handleAuth = async (isSignUp: boolean) => {
+    console.log('handleAuth called', { isSignUp, email, password, confirmPassword });
     setError('');
     if (isSignUp && password !== confirmPassword) {
       setError('Passwords do not match.');
@@ -33,10 +36,19 @@ function Popup() {
     }
     try {
       if (isSignUp) {
+        console.log('Creating user...');
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        await sendEmailVerification(userCredential.user);
+        console.log('User created', userCredential.user);
+        try {
+          await sendEmailVerification(userCredential.user);
+          console.log('Email verification sent');
+        } catch (verifyErr) {
+          console.error('Email verification failed:', verifyErr);
+          // Continue anyway for development
+        }
         setView('verify-email');
       } else {
+        console.log('Signing in...');
         await signInWithEmailAndPassword(auth, email, password);
       }
       // Clear form
@@ -44,8 +56,8 @@ function Popup() {
       setPassword('');
       setConfirmPassword('');
     } catch (err: any) {
+      console.error('Auth error:', err);
       setError(err.message);
-      console.error(err);
     }
   };
 
@@ -57,26 +69,33 @@ function Popup() {
     }
   };
 
-  const fetchCodeforcesData = async () => {
+  const fetchData = async () => {
     if (!codeforcesUsername) {
-      setError('Please enter a Codeforces username.');
+      setError('Please enter a username.');
       return;
     }
     setLoadingCodeforces(true);
     setError('');
     try {
-      const response = await fetch(`http://localhost:3000/codeforces/${codeforcesUsername}`);
+      const response = await fetch('http://localhost:3002/api/reports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ handle: codeforcesUsername, platform }),
+      });
       const data = await response.json();
       if (response.ok) {
         setCodeforcesData(data);
-        setView('codeforces'); // Switch to Codeforces data view
+        setLastCodeforcesData(data);
+        setView('codeforces'); // Switch to data view
       } else {
-        setError(data.message || 'Failed to fetch Codeforces data.');
+        setError(data.message || 'Failed to generate report.');
         setCodeforcesData(null);
       }
     } catch (err) {
       setError('Network error or server not reachable.');
-      console.error('Error fetching Codeforces data:', err);
+      console.error('Error generating report:', err);
       setCodeforcesData(null);
     } finally {
       setLoadingCodeforces(false);
@@ -90,13 +109,23 @@ function Popup() {
       {user ? (
         // Profile View (after login)
         <div className="profile-display">
-          <h2>Welcome, {user.email}!</h2>
+          <h2>Welcome, {(user as any).email}!</h2>
           <p>You are logged in.</p>
           <button onClick={handleSignOut}>Sign Out</button>
           <h3>Linked Coding Platforms</h3>
           <p>No platforms linked yet.</p>
+          {lastCodeforcesData && (
+            <div>
+              <h4>Last Codeforces Stats</h4>
+              <p>Rating: {(lastCodeforcesData as any).rating}</p>
+              <p>Rank: {(lastCodeforcesData as any).rank}</p>
+            </div>
+          )}
           <button onClick={() => setView('codeforcesInput')}>
             Link Codeforces Account
+          </button>
+          <button onClick={() => window.open('http://localhost:5173', '_blank')}>
+            Go to Dashboard
           </button>
         </div>
       ) : view === 'login' || view === 'signup' ? (
@@ -137,35 +166,40 @@ function Popup() {
         <div>
           <h2>Verify Your Email</h2>
           <p>A verification email has been sent to your email address. Please check your inbox and follow the instructions to complete the sign up.</p>
+          <button onClick={() => setView('profile')} className="secondary">Continue (Dev)</button>
           <button onClick={() => setView('login')} className="secondary">Go to Sign In</button>
         </div>
       ) : view === 'codeforcesInput' ? (
         // Codeforces Input View
         <div>
-          <h2>Link Codeforces Account</h2>
+          <h2>Link Coding Account</h2>
+          <select value={platform} onChange={(e) => setPlatform(e.target.value)}>
+            <option value="codeforces">Codeforces</option>
+            <option value="leetcode">LeetCode</option>
+          </select>
           <input
             type="text"
-            placeholder="Codeforces Username"
+            placeholder="Enter Username"
             value={codeforcesUsername}
             onChange={(e) => setCodeforcesUsername(e.target.value)}
           />
-          <button onClick={fetchCodeforcesData} disabled={loadingCodeforces}>
-            {loadingCodeforces ? 'Fetching...' : 'Fetch Codeforces Data'}
+          <button onClick={fetchData} disabled={loadingCodeforces}>
+            {loadingCodeforces ? 'Generating...' : 'Generate Report'}
           </button>
           <button onClick={() => setView('profile')} className="secondary">Back to Profile</button>
         </div>
       ) : view === 'codeforces' && codeforcesData ? (
         // Codeforces Profile Display View
         <div className="profile-display">
-          <h2>Codeforces Profile: {codeforcesData.handle}</h2>
-          {codeforcesData.avatar && (
-            <img src={`https:${codeforcesData.avatar}`} alt="Avatar" />
+          <h2>Codeforces Profile: {(codeforcesData as any).handle}</h2>
+          {(codeforcesData as any).avatar && (
+            <img src={`https:${(codeforcesData as any).avatar}`} alt="Avatar" />
           )}
-          <p>Rating: <strong>{codeforcesData.rating || 'N/A'}</strong></p>
-          <p>Rank: <strong>{codeforcesData.rank || 'N/A'}</strong></p>
-          <p>Max Rating: <strong>{codeforcesData.maxRating || 'N/A'}</strong></p>
-          <p>Max Rank: <strong>{codeforcesData.maxRank || 'N/A'}</strong></p>
-          <a href={`https://codeforces.com/profile/${codeforcesData.handle}`} target="_blank" rel="noopener noreferrer">
+          <p>Rating: <strong>{(codeforcesData as any).rating || 'N/A'}</strong></p>
+          <p>Rank: <strong>{(codeforcesData as any).rank || 'N/A'}</strong></p>
+          <p>Max Rating: <strong>{(codeforcesData as any).maxRating || 'N/A'}</strong></p>
+          <p>Max Rank: <strong>{(codeforcesData as any).maxRank || 'N/A'}</strong></p>
+          <a href={`https://codeforces.com/profile/${(codeforcesData as any).handle}`} target="_blank" rel="noopener noreferrer">
             View Profile on Codeforces
           </a>
           <button onClick={() => setView('profile')} className="secondary">Back to Profile</button>

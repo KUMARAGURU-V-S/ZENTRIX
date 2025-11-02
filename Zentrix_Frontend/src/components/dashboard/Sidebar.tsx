@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import { FaTachometerAlt, FaHistory, FaUserAlt } from 'react-icons/fa';
+import { FaTachometerAlt, FaHistory, FaUserAlt, FaComments } from 'react-icons/fa';
 import type { Value } from "react-calendar/dist/shared/types.js";
 
 const generateLoginDates = (numDates: number): Date[] => {
@@ -65,6 +65,12 @@ function Sidebar({ onPageChange }: { onPageChange: (page: string) => void }) {
             <a href="#" onClick={() => handleLinkClick('profile')} className={`nav-link ${activeLink === 'profile' ? 'active' : ''}`}>
               <FaUserAlt />
               Profile
+            </a>
+          </li>
+          <li>
+            <a href="#" onClick={() => handleLinkClick('chat')} className={`nav-link ${activeLink === 'chat' ? 'active' : ''}`}>
+              <FaComments />
+              AI Chat
             </a>
           </li>
         </ul>

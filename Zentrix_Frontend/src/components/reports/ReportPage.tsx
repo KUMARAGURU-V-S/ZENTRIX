@@ -3,6 +3,8 @@ import Button from '../ui/Button';
 import ReportChart from './ReportChart';
 import "../../styles/components.css";
 import type { Report, ErrorReport } from '../../App';
+import jsPDF from 'jspdf';
+import { CSVLink } from 'react-csv';
 
 interface ReportPageProps {
   reportData: Report | ErrorReport;
@@ -22,35 +24,97 @@ function ReportPage({ reportData, onBack }: ReportPageProps) {
 
   const data = reportData as Report;
 
+  // Determine the platform from the data available
+  const platform = data.platform || (data.codeforcesData ? 'codeforces' : 'unknown');
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    doc.text(`Performance Report for ${data.username}`, 10, 10);
+
+    if (platform === 'codeforces' && data.codeforcesData) {
+      doc.text(`Rating: ${data.codeforcesData.rating} (${data.codeforcesData.rank})`, 10, 20);
+      doc.text(`Max Rating: ${data.codeforcesData.maxRating} (${data.codeforcesData.maxRank})`, 10, 30);
+    } else if (platform === 'leetcode' && data.leetcodeData) {
+      doc.text(`Ranking: ${data.leetcodeData.ranking}`, 10, 20);
+      doc.text(`Total Solved: ${data.leetcodeData.totalSolved}`, 10, 30);
+    }
+
+    doc.text(`Problems Solved: ${data.performanceMetrics.problemSolved}`, 10, 40);
+    doc.text(`Accuracy: ${data.performanceMetrics.accuracy}`, 10, 50);
+    doc.text(`Summary: ${data.summary}`, 10, 60);
+    doc.save(`${data.username}_report.pdf`);
+  };
+
+  const getCsvData = () => {
+    const commonData = [
+      ['Metric', 'Value'],
+      ['Username', data.username],
+      ['Platform', platform],
+      ['Problems Solved', data.performanceMetrics.problemSolved],
+      ['Accuracy', data.performanceMetrics.accuracy],
+      ['Summary', data.summary],
+    ];
+
+    if (platform === 'codeforces' && data.codeforcesData) {
+      return [
+        ...commonData,
+        ['Rating', data.codeforcesData.rating],
+        ['Rank', data.codeforcesData.rank],
+        ['Max Rating', data.codeforcesData.maxRating],
+        ['Max Rank', data.codeforcesData.maxRank],
+      ];
+    }
+    // Add LeetCode specific CSV data here if needed
+    return commonData;
+  };
+
   return (
     <div className="report-dashboard">
       <header className="report-header">
         <div className="report-header-content">
-          <img src={data.codeforcesData.avatar} alt={`${data.username}'s avatar`} className="avatar" />
+          {platform === 'codeforces' && data.codeforcesData?.avatar && (
+            <img src={data.codeforcesData.avatar} alt={`${data.username}'s avatar`} className="avatar" />
+          )}
           <div>
             <h1 className="report-title">Performance Overview</h1>
             <p className="report-subtitle">Report for <span className="username">{data.username}</span></p>
           </div>
         </div>
-        <Button onClick={onBack} loading={false}>Go Back</Button>
+        <div className="export-buttons">
+          <Button onClick={exportToPDF} loading={false}>Export PDF</Button>
+          <CSVLink data={getCsvData()} filename={`${data.username}_${platform}_report.csv`}>
+            <Button loading={false}>Export CSV</Button>
+          </CSVLink>
+          <Button onClick={onBack} loading={false}>Go Back</Button>
+        </div>
       </header>
 
       <div className="metrics-grid">
-        <Card className="metric-card">
-          <p className="metric-label">Rating</p>
-          <h2 className="metric-value">{data.codeforcesData.rating} ({data.codeforcesData.rank})</h2>
-        </Card>
-        <Card className="metric-card">
-          <p className="metric-label">Max Rating</p>
-          <h2 className="metric-value">{data.codeforcesData.maxRating} ({data.codeforcesData.maxRank})</h2>
-        </Card>
+        {platform === 'codeforces' && data.codeforcesData && (
+          <>
+            <Card className="metric-card">
+              <p className="metric-label">Rating</p>
+              <h2 className="metric-value">{data.codeforcesData.rating} ({data.codeforcesData.rank})</h2>
+            </Card>
+            <Card className="metric-card">
+              <p className="metric-label">Max Rating</p>
+              <h2 className="metric-value">{data.codeforcesData.maxRating} ({data.codeforcesData.maxRank})</h2>
+            </Card>
+          </>
+        )}
+        {platform === 'leetcode' && data.leetcodeData && (
+           <Card className="metric-card">
+             <p className="metric-label">Ranking</p>
+             <h2 className="metric-value">{data.leetcodeData.ranking}</h2>
+           </Card>
+        )}
         <Card className="metric-card">
           <p className="metric-label">Problems Solved</p>
           <h2 className="metric-value">{data.performanceMetrics.problemSolved}</h2>
         </Card>
         <Card className="metric-card">
           <p className="metric-label">Accuracy Rate</p>
-          <h2 className="metric-value">{data.performanceMetrics.accuracy}</h2>
+          <h2 className="metric-value">{data.performanceMetrics.accuracy || 'N/A'}</h2>
         </Card>
       </div>
 

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Sidebar from './Sidebar.tsx';
 import DashboardHeader from './DashboardHeader.tsx';
 import ReportPage from '../reports/ReportPage.tsx';
 import RecentReportsList from './RecentReportList';
@@ -16,28 +15,32 @@ function DashboardLayout({
   onGenerateReport,
   onClearReport,
   onSelectReport,
-  onPageChange, // New prop
+  onPageChange: _onPageChange, // New prop (intentionally unused)
+  searchQuery,
+  onSearchChange,
 }: {
   currentReport: Report | ErrorReport | null;
   loading: boolean;
   generatedReports: Report[];
-  onGenerateReport: (username: string) => void;
+  onGenerateReport: (username: string, platform: string) => void;
   onClearReport: () => void;
   onSelectReport: (report: Report) => void;
   onPageChange: (page: string) => void; // New prop type
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
 }) {
   const [username, setUsername] = useState('');
+  const [platform, setPlatform] = useState('codeforces');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onGenerateReport(username);
+    console.log('Submitting report generation:', { username, platform });
+    onGenerateReport(username, platform);
   };
 
   return (
     <>
-      <Sidebar onPageChange={onPageChange} />
-      <main className="main-content">
-        <DashboardHeader />
+      <DashboardHeader searchQuery={searchQuery} onSearchChange={onSearchChange} />
         {!currentReport ? (
           <>
             <form onSubmit={handleSubmit} className="form-card-container">
@@ -49,11 +52,23 @@ function DashboardLayout({
                   Enter a username to generate a comprehensive performance report.
                 </p>
                 <div className="form-fields">
+                  <select
+                    value={platform}
+                    onChange={(e) => setPlatform(e.target.value)}
+                    className="platform-select"
+                    disabled={loading}
+                  >
+                    <option value="codeforces">Codeforces</option>
+                    <option value="leetcode">LeetCode</option>
+                  </select>
                   <Input
                     type="text"
-                    placeholder="Enter LeetCode/HackerRank Username"
+                    placeholder="Enter Username"
                     value={username}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      console.log('Username change:', e.target.value);
+                      setUsername(e.target.value);
+                    }}
                     required
                     disabled={loading}
                   />
@@ -73,7 +88,6 @@ function DashboardLayout({
         ) : (
           <ReportPage reportData={currentReport} onBack={onClearReport} />
         )}
-      </main>
     </>
   );
 }

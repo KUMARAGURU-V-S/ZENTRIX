@@ -12,8 +12,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "axios": "^1.7.2",
-    "express": "^4.19.2"
+    "dotenv": "^17.2.3",
+    "express": "^4.19.2",
+    "firebase": "^10.7.1"
   },
   "devDependencies": {
     "supertest": "^7.1.4",

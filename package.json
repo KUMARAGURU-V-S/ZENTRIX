@@ -13,7 +13,8 @@
     "build": "tsc",
     "client": "node build/client.js",
     "task-server": "node task-server.js",
-    "mcp-server": "node backend-api/mcp-server.js"
+    "mcp-server": "node backend-api/mcp-server.js",
+    "dev": "concurrently \"npm:dev --prefix Zentrix_Frontend\" \"npm:start --prefix backend-api\""
   },
   "keywords": [],
   "author": "",
@@ -23,11 +24,12 @@
     "@modelcontextprotocol/sdk": "^1.9.0",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
-    "firebase": "^12.1.0",
+    "firebase": "^12.3.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.1",
+    "concurrently": "^9.2.1",
     "typescript": "^5.8.3"
   }
 }
