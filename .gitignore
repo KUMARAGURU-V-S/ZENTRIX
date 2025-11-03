@@ -1,3 +1,8 @@
 node_modules
+
+# Environment variables
 .env
+.env.*
+!/.env.example
+
 dev_server.config.json

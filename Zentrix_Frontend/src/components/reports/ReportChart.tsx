@@ -47,26 +47,56 @@ const ReportChart = ({ data }: { data: Report['difficultyBreakdown'] }) => {
         display: true,
         text: "Problems Solved by Difficulty",
         color: "var(--text-primary)",
+        font: {
+          size: 16,
+        },
+        padding: {
+          top: 10,
+          bottom: 20,
+        },
       },
       tooltip: {
         callbacks: {
           label: (context: TooltipItem<'bar'>) => `Solved: ${context.raw}`,
         },
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: 'var(--primary-color)',
+        bodyColor: 'var(--text-primary)',
+        borderColor: 'var(--border-color)',
+        borderWidth: 1,
       },
     },
     scales: {
       x: {
-        ticks: { color: "var(--text-primary)" },
+        ticks: {
+          color: "var(--text-primary)",
+          font: {
+            size: 12,
+          },
+        },
         grid: { color: "var(--border-color)" },
       },
       y: {
-        ticks: { color: "var(--text-primary)" },
+        ticks: {
+          color: "var(--text-primary)",
+          font: {
+            size: 12,
+          },
+          beginAtZero: true,
+        },
         grid: { color: "var(--border-color)" },
       },
     },
+    animation: {
+      duration: 1000,
+    },
   };
 
-  return <Bar data={chartData} options={options} />;
+  return (
+    <div className="report-chart-container">
+      <Bar data={chartData} options={options} />
+    </div>
+  );
 };
 
 export default ReportChart;

@@ -8,14 +8,24 @@ import { getAuth } from "firebase/auth";
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyBdDDeepVsjx74fuLXnkKxfZ-1ER4PB20s",
-  authDomain: "zentrix-d3707.firebaseapp.com",
-  projectId: "zentrix-d3707",
-  storageBucket: "zentrix-d3707.firebasestorage.app",
-  messagingSenderId: "470250095555",
-  appId: "1:470250095555:web:586307530e5a9d7598f376",
-  measurementId: "G-GWSYCLLMS4"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
+
+// Validate that all Firebase config values are present
+const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId', 'measurementId'];
+const missingKeys = requiredKeys.filter(key => !firebaseConfig[key as keyof typeof firebaseConfig]);
+
+if (missingKeys.length > 0) {
+  throw new Error(
+    `Firebase config is missing. Make sure you have a .env.local file with all the required VITE_FIREBASE_* variables. Missing: ${missingKeys.join(', ')}`
+  );
+}
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);

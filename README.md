@@ -95,14 +95,16 @@ FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 FIREBASE_APP_ID=your_app_id
 ```
 
-**Zentrix_Frontend/src/firebase.ts** and **Zentrix_Extension/src/firebase.ts**:
-```javascript
-const firebaseConfig = {
-  apiKey: "your_api_key",
-  authDomain: "your_project.firebaseapp.com",
-  projectId: "your_project_id",
-  // ... rest of config
-};
+**Zentrix_Frontend/.env.local** and **Zentrix_Extension/.env.local**:
+Create a `.env.local` file in both the `Zentrix_Frontend` and `Zentrix_Extension` directories and add your Firebase configuration like this:
+```
+VITE_FIREBASE_API_KEY=your_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
 ```
 
 ## 📖 Usage

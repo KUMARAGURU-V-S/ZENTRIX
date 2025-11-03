@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { auth } from './firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification } from 'firebase/auth';
 
@@ -77,7 +77,7 @@ function Popup() {
     setLoadingCodeforces(true);
     setError('');
     try {
-      const response = await fetch('http://localhost:3002/api/reports', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/reports`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -124,8 +124,8 @@ function Popup() {
           <button onClick={() => setView('codeforcesInput')}>
             Link Codeforces Account
           </button>
-          <button onClick={() => window.open('http://localhost:5173', '_blank')}>
-            Go to Dashboard
+          <button onClick={() => window.open(import.meta.env.VITE_FRONTEND_URL, '_blank')}>
+            Open Dashboard
           </button>
         </div>
       ) : view === 'login' || view === 'signup' ? (

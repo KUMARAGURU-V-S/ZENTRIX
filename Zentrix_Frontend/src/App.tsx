@@ -97,31 +97,46 @@ function App() {
 
   const handleGenerateReport = async (username: string, platform: string = 'codeforces') => {
     console.log('Generating report for:', { username, platform });
+    console.log('API_URL:', API_URL);
+    console.log('Full API endpoint:', `${API_URL}/api/reports`);
+    console.log('handleGenerateReport called with username:', username, 'platform:', platform);
     setLoading(true);
     setCurrentReport(null);
     try {
-      const response = await fetch(`${API_URL}/reports`, {
+      console.log('Making fetch request...');
+      const response = await fetch(`${API_URL}/api/reports`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ handle: username, platform }),
       });
+      console.log('Fetch response status:', response.status);
+      console.log('Fetch response ok:', response.ok);
       const newReport = await response.json();
       console.log('Report response:', newReport);
+      console.log('Report generation successful');
       // The onSnapshot listener will automatically update the generatedReports state
       setCurrentReport(newReport);
     } catch (error) {
       console.error("Error fetching report:", error);
+      console.error("Error details:", error instanceof Error ? error.message : String(error));
+      console.log('Report generation failed with error');
       setCurrentReport({ error: "Could not generate report. Please try again." });
     } finally {
       setLoading(false);
+      console.log('Report generation process completed');
     }
   };
 
   const clearReport = () => {
     setCurrentReport(null);
     setCurrentPage('dashboard'); // Go back to dashboard after clearing
+  };
+
+  const handleSelectReport = (report: Report) => {
+    setCurrentReport(report);
+    setCurrentPage('dashboard');
   };
 
   const handleSelectSubmission = (submission: Report) => {
@@ -145,14 +160,14 @@ function App() {
             generatedReports={filteredReports}
             onGenerateReport={handleGenerateReport}
             onClearReport={clearReport}
-            onSelectReport={handleSelectSubmission}
+            onSelectReport={handleSelectReport}
             onPageChange={handleNavigation} // Pass handler
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
           />
         );
       case 'history':
-        return <div className="page-container"><HistoryPage reports={generatedReports} onSelectReport={handleSelectSubmission} /></div>;
+        return <div className="page-container"><HistoryPage reports={generatedReports} onSelectReport={handleSelectReport} onNavigate={handleNavigation} /></div>;
       case 'profile':
         return <div className="page-container"><ProfilePage /></div>;
       case 'chat':
