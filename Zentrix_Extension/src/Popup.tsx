@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { auth } from './firebase';
+import { auth, hasValidConfig } from './firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification } from 'firebase/auth';
 
 function Popup() {
@@ -16,20 +16,35 @@ function Popup() {
   const [loadingCodeforces, setLoadingCodeforces] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser as any);
-      if (currentUser) {
-        setView('profile');
-      } else {
-        setView('login');
-      }
-    });
-    return () => unsubscribe();
+    if (!hasValidConfig || !auth) {
+      console.warn('Firebase not available, extension will run without authentication');
+      return;
+    }
+
+    try {
+      const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        setUser(currentUser as any);
+        if (currentUser) {
+          setView('profile');
+        } else {
+          setView('login');
+        }
+      });
+      return () => unsubscribe();
+    } catch (error) {
+      console.error('Failed to set up auth state listener:', error);
+    }
   }, []);
 
   const handleAuth = async (isSignUp: boolean) => {
     console.log('handleAuth called', { isSignUp, email, password, confirmPassword });
     setError('');
+    
+    if (!hasValidConfig || !auth) {
+      setError('Firebase authentication is not available. Please check your configuration.');
+      return;
+    }
+    
     if (isSignUp && password !== confirmPassword) {
       setError('Passwords do not match.');
       return;
@@ -62,6 +77,11 @@ function Popup() {
   };
 
   const handleSignOut = async () => {
+    if (!hasValidConfig || !auth) {
+      console.warn('Firebase not available for sign out');
+      return;
+    }
+    
     try {
       await signOut(auth);
     } catch (err) {

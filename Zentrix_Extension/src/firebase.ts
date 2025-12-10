@@ -17,19 +17,44 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-// Validate that all Firebase config values are present
-const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId', 'measurementId'];
+// Check if all required Firebase config values are present
+const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
 const missingKeys = requiredKeys.filter(key => !firebaseConfig[key as keyof typeof firebaseConfig]);
 
 if (missingKeys.length > 0) {
-  throw new Error(
-    `Firebase config is missing. Make sure you have a .env.local file with all the required VITE_FIREBASE_* variables. Missing: ${missingKeys.join(', ')}`
-  );
+  console.warn('Firebase config is missing some variables:', missingKeys.join(', '));
+  console.warn('Extension will run in development mode without Firebase features');
+  
+  // Don't throw error immediately - let the extension mount and handle missing Firebase gracefully
 }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const auth = getAuth(app);
+// Initialize Firebase only if configuration is valid
+let app: any = null;
+let auth: any = null;
+let analytics: any = null;
+
+const hasValidConfig = missingKeys.length === 0;
+
+if (hasValidConfig) {
+  try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    
+    // Analytics might not work in extension context, so handle gracefully
+    try {
+      analytics = getAnalytics(app);
+    } catch (error) {
+      console.warn('Firebase Analytics not available in extension context');
+    }
+    
+    console.log('Firebase initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize Firebase:', error);
+    console.warn('Extension will run without Firebase features');
+  }
+} else {
+  console.warn('Skipping Firebase initialization due to missing configuration');
+}
 
 export { app, auth, analytics };
+export { hasValidConfig };

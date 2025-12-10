@@ -19,19 +19,37 @@ const firebaseConfig = {
 console.log('Firebase API Key from env:', import.meta.env.VITE_FIREBASE_API_KEY);
 console.log('All Firebase config:', firebaseConfig);
 
-// Validate that all Firebase config values are present
-const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId', 'measurementId'] as const;
+// Check if all required Firebase config values are present
+const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'] as const;
 const missingKeys = requiredKeys.filter(key => !firebaseConfig[key as keyof typeof firebaseConfig]);
 
 if (missingKeys.length > 0) {
-  throw new Error(
-    `Firebase config is missing. Make sure you have a .env.local file with all the required VITE_FIREBASE_* variables. Missing: ${missingKeys.join(', ')}`
-  );
+  console.warn('Firebase config is missing some variables:', missingKeys.join(', '));
+  console.warn('App will run in development mode without Firebase features');
+  
+  // Don't throw error immediately - let the app mount and handle missing Firebase gracefully
 }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+// Initialize Firebase only if configuration is valid
+let app: any = null;
+let db: any = null;
+let auth: any = null;
 
-export { db, auth };
+const hasValidConfig = missingKeys.length === 0;
+
+if (hasValidConfig) {
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    auth = getAuth(app);
+    console.log('Firebase initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize Firebase:', error);
+    console.warn('App will run without Firebase features');
+  }
+} else {
+  console.warn('Skipping Firebase initialization due to missing configuration');
+}
+
+export { db, auth, app };
+export { hasValidConfig };

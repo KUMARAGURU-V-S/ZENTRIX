@@ -4,11 +4,10 @@ import Sidebar from './components/dashboard/Sidebar';
 import LoginPage from './pages/LoginPage';
 import HistoryPage from './pages/HistoryPage';
 import ProfilePage from './pages/ProfilePage';
-import SubmissionDetailsPage from './pages/SubmissionDetailsPage';
 import ChatPage from './pages/ChatPage';
 import './styles/main.css';
 
-import { db, auth } from './firebase.ts';
+import { db, auth, hasValidConfig } from './firebase.ts';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -52,10 +51,9 @@ export type ErrorReport = {
 
 function App() {
   console.log("App function called");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [currentPage, setCurrentPage] = useState('dashboard'); // New state for navigation
   const [currentReport, setCurrentReport] = useState<Report | ErrorReport | null>(null);
-  const [selectedSubmission, setSelectedSubmission] = useState<Report | null>(null);
   const [loading, setLoading] = useState(false);
   const [generatedReports, setGeneratedReports] = useState<Report[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,33 +64,52 @@ function App() {
   );
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      setIsLoggedIn(!!user);
-    });
+    if (!hasValidConfig || !auth) {
+      console.warn('Firebase not available, skipping auth state listener');
+      return;
+    }
 
-    return () => unsubscribeAuth();
+    try {
+      const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+        setIsLoggedIn(!!user);
+      });
+
+      return () => unsubscribeAuth();
+    } catch (error) {
+      console.error('Failed to set up auth state listener:', error);
+    }
   }, []);
 
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn || !hasValidConfig || !db) {
+      if (!hasValidConfig) {
+        console.warn('Firebase not available, skipping Firestore listener');
+      }
+      return;
+    }
 
     setLoading(true);
-    const q = query(collection(db, "reports"), orderBy("date", "desc"));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const reports: Report[] = [];
-      querySnapshot.forEach((doc) => {
-        reports.push({ id: doc.id, ...doc.data() } as Report);
+    try {
+      const q = query(collection(db, "reports"), orderBy("date", "desc"));
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const reports: Report[] = [];
+        querySnapshot.forEach((doc) => {
+          reports.push({ id: doc.id, ...doc.data() } as Report);
+        });
+        setGeneratedReports(reports);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Firestore onSnapshot error:", error);
+        setGeneratedReports([]); // Clear any old reports
+        setLoading(false); // Un-stick the UI on error
       });
-      setGeneratedReports(reports);
-      setLoading(false);
-    },
-    (error) => {
-      console.error("Firestore onSnapshot error:", error);
-      setGeneratedReports([]); // Clear any old reports
-      setLoading(false); // Un-stick the UI on error
-    });
 
-    return () => unsubscribe();
+      return () => unsubscribe();
+    } catch (error) {
+      console.error('Failed to set up Firestore listener:', error);
+      setLoading(false);
+    }
   }, [isLoggedIn]);
 
   const handleGenerateReport = async (username: string, platform: string = 'codeforces') => {
@@ -139,11 +156,6 @@ function App() {
     setCurrentPage('dashboard');
   };
 
-  const handleSelectSubmission = (submission: Report) => {
-    setSelectedSubmission(submission);
-    setCurrentPage('submission');
-  };
-
   const handleNavigation = (page: string) => {
     setCurrentPage(page);
     setCurrentReport(null); // Clear any open report view
@@ -172,8 +184,6 @@ function App() {
         return <div className="page-container"><ProfilePage /></div>;
       case 'chat':
         return <div className="page-container"><ChatPage /></div>;
-      case 'submission':
-        return <div className="page-container"><SubmissionDetailsPage submission={selectedSubmission} onBack={() => setCurrentPage('history')} /></div>;
       default:
         return <div>404 Page Not Found</div>;
     }
